@@ -6,7 +6,32 @@ from plotly.subplots import make_subplots
 
 st.set_page_config(page_title="Stock Signal App", layout="wide")
 
-st.title("Stock Candlestick Chart")
+st.markdown(
+    """
+    <style>
+    .fixed-title {
+        position: sticky;
+        top: 0;
+        z-index: 999;
+        background: white;
+        padding-top: 18px;
+        padding-bottom: 12px;
+        font-size: 3rem;
+        font-weight: 700;
+        color: #2f3342;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .title-spacer {
+        height: 24px;
+    }
+    </style>
+
+    <div class="fixed-title">Stock Candlestick Chart</div>
+    <div class="title-spacer"></div>
+    """,
+    unsafe_allow_html=True,
+)
 
 col1, col2 = st.columns([2, 1])
 
