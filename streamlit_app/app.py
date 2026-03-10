@@ -10,34 +10,31 @@ st.set_page_config(page_title="Stock Signal App", layout="wide")
 # Clean fixed header
 # -----------------------------
 st.markdown(
-    """
-    <style>
-    .fixed-header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        background: white;
-        padding: 18px 32px;
-        font-size: 32px;
-        font-weight: 700;
-        color: #2f3342;
-        border-bottom: 1px solid #e5e7eb;
-        z-index: 999;
-    }
+f"""
+<div style="
+padding:14px;
+border-radius:10px;
+border:1px solid {border_color};
+background:{box_color};
+color:{text_color};
+margin-top:12px;
+margin-bottom:20px;
+font-size:16px;
+">
 
-    .main-content {
-        margin-top: 90px;
-    }
-    </style>
+<b>Hint:</b> {hint}<br>
+<b>Confidence:</b> {confidence}<br>
+<b>Reason:</b> {reason}<br><br>
 
-    <div class="fixed-header">
-        Stock Candlestick Chart
-    </div>
+<b>Close:</b> {fmt_num(last_close)} |
+<b>SMA20:</b> {fmt_num(last_sma20)} |
+<b>SMA50:</b> {fmt_num(last_sma50)} |
+<b>RSI14:</b> {fmt_num(last_rsi)} |
+<b>Kagi Moves ≥50:</b> {kagi_moves}
 
-    <div class="main-content">
-    """,
-    unsafe_allow_html=True,
+</div>
+""",
+unsafe_allow_html=True
 )
 
 # -----------------------------
