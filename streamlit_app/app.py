@@ -23,16 +23,14 @@ st.markdown(
     .app-title {
         font-size: 2.2rem;
         font-weight: 700;
-        color: #23324a;
-        margin-bottom: 0.4rem;
+        color: #1f2937;
+        margin-bottom: 0.1rem;
     }
 
-    .company-name {
-        font-size: 1rem;
-        font-weight: 600;
-        color: #334155;
-        margin-top: -4px;
-        margin-bottom: 10px;
+    .company-meta {
+        color: #6b7280;
+        font-size: 14px;
+        margin-bottom: 12px;
     }
 
     .hint-box {
@@ -54,34 +52,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.markdown(
-    f"""
-    <div class="app-title">{company_name} ({symbol})</div>
-    <div style="color:#6b7280; font-size:14px; margin-bottom:10px;">
-        {sector} | {exchange} | Market Cap: {market_cap}
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
 # -----------------------------
-# Inputs
-# -----------------------------
-col1, col2 = st.columns([2.2, 1.1], gap="small")
-
-with col1:
-    symbol = st.text_input("Stock Symbol", "AAPL").strip().upper()
-    company_name, sector, exchange, market_cap = get_company_info(symbol)
-
-with col2:
-    period = st.selectbox(
-        "Period",
-        ["1mo", "3mo", "6mo", "1y", "5y", "max"],
-        index=3,
-    )
-
-# -----------------------------
-# Indicators
+# Helper functions
 # -----------------------------
 def sma(values: pd.Series, window: int):
     return values.rolling(window).mean()
@@ -129,11 +101,19 @@ def fmt_num(value):
     return f"{value:.2f}"
 
 
-# -----------------------------
-# Data load
-# -----------------------------
-@st.cache_data(ttl=900)
+def format_market_cap(market_cap):
+    if not market_cap:
+        return "N/A"
+    if market_cap >= 1e12:
+        return f"${market_cap / 1e12:.2f}T"
+    if market_cap >= 1e9:
+        return f"${market_cap / 1e9:.2f}B"
+    if market_cap >= 1e6:
+        return f"${market_cap / 1e6:.2f}M"
+    return f"${market_cap:,.0f}"
 
+
+@st.cache_data(ttl=3600)
 def get_company_info(symbol: str):
     try:
         ticker = yf.Ticker(symbol)
@@ -142,47 +122,54 @@ def get_company_info(symbol: str):
         company = info.get("longName") or info.get("shortName") or symbol
         sector = info.get("sector", "Unknown sector")
         exchange = info.get("exchange", "Unknown exchange")
-        market_cap = info.get("marketCap")
-
-        if market_cap:
-            market_cap = f"${market_cap/1e12:.2f}T" if market_cap > 1e12 else f"${market_cap/1e9:.2f}B"
-        else:
-            market_cap = "N/A"
+        market_cap = format_market_cap(info.get("marketCap"))
 
         return company, sector, exchange, market_cap
-
     except Exception:
         return symbol, "", "", ""
-    
-def load_stock_data(symbol: str, period: str):
-    ticker = yf.Ticker(symbol)
-    hist = ticker.history(period=period, interval="1d")
-
-    company_name = symbol
-    try:
-        info = ticker.info
-        company_name = (
-            info.get("longName")
-            or info.get("shortName")
-            or info.get("displayName")
-            or symbol
-        )
-    except Exception:
-        company_name = symbol
-
-    return hist, company_name
 
 
+@st.cache_data(ttl=900)
+def load_stock(symbol: str, period: str):
+    return yf.Ticker(symbol).history(period=period, interval="1d")
+
+
+# -----------------------------
+# Inputs
+# -----------------------------
+col1, col2 = st.columns([2.2, 1.1], gap="small")
+
+with col1:
+    symbol = st.text_input("Stock Symbol", "AAPL").upper()
+
+with col2:
+    period = st.selectbox(
+        "Period",
+        ["1mo", "3mo", "6mo", "1y", "5y", "max"],
+        index=3,
+    )
+
+# -----------------------------
+# Company info
+# -----------------------------
+company_name, sector, exchange, market_cap = get_company_info(symbol)
+
+st.markdown(
+    f"""
+    <div class="app-title">{company_name} ({symbol})</div>
+    <div class="company-meta">{sector} | {exchange} | Market Cap: {market_cap}</div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# -----------------------------
+# Load data
+# -----------------------------
 try:
-    df, company_name = load_stock_data(symbol, period)
+    df = load_stock(symbol, period)
 except Exception:
     st.error("Yahoo Finance is temporarily rate-limiting requests. Please try again later.")
     st.stop()
-
-st.markdown(
-    f'<div class="company-name">{symbol} — {company_name}</div>',
-    unsafe_allow_html=True,
-)
 
 if df.empty:
     st.error("No stock data found.")
@@ -255,7 +242,6 @@ st.markdown(
         background:{box_color};
         color:{text_color};
     ">
-        <b>Stock:</b> {company_name} ({symbol})<br>
         <b>Hint:</b> {hint}<br>
         <b>Confidence:</b> {confidence}<br>
         <b>Reason:</b> {reason}<br><br>
@@ -270,7 +256,7 @@ st.markdown(
 )
 
 # -----------------------------
-# Buy/Sell points
+# Buy/Sell crossover points
 # -----------------------------
 cross_up = (df["SMA20"] > df["SMA50"]) & (df["SMA20"].shift(1) <= df["SMA50"].shift(1))
 cross_down = (df["SMA20"] < df["SMA50"]) & (df["SMA20"].shift(1) >= df["SMA50"].shift(1))
@@ -290,6 +276,7 @@ fig = make_subplots(
     specs=[[{"secondary_y": True}], [{"secondary_y": False}]],
 )
 
+# Candlestick
 fig.add_trace(
     go.Candlestick(
         x=df.index,
@@ -297,7 +284,7 @@ fig.add_trace(
         high=df["High"],
         low=df["Low"],
         close=df["Close"],
-        name=f"{company_name} Price",
+        name="Price",
         increasing_line_color="#26a69a",
         decreasing_line_color="#ef5350",
         increasing_fillcolor="rgba(38,166,154,0.35)",
@@ -308,6 +295,7 @@ fig.add_trace(
     secondary_y=False,
 )
 
+# SMA20
 fig.add_trace(
     go.Scatter(
         x=df.index,
@@ -320,6 +308,7 @@ fig.add_trace(
     secondary_y=False,
 )
 
+# SMA50
 fig.add_trace(
     go.Scatter(
         x=df.index,
@@ -332,6 +321,7 @@ fig.add_trace(
     secondary_y=False,
 )
 
+# Volume
 fig.add_trace(
     go.Bar(
         x=df.index,
@@ -347,6 +337,7 @@ fig.add_trace(
     secondary_y=True,
 )
 
+# BUY markers
 if not buy_points.empty:
     fig.add_trace(
         go.Scatter(
@@ -361,6 +352,7 @@ if not buy_points.empty:
         secondary_y=False,
     )
 
+# SELL markers
 if not sell_points.empty:
     fig.add_trace(
         go.Scatter(
@@ -375,6 +367,7 @@ if not sell_points.empty:
         secondary_y=False,
     )
 
+# RSI
 fig.add_trace(
     go.Scatter(
         x=df.index,
