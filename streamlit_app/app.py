@@ -13,7 +13,7 @@ st.markdown(
     """
     <style>
     .block-container {
-        padding-top: 3rem;
+        padding-top: 2.2rem;
         padding-bottom: 1rem;
         padding-left: 1.5rem;
         padding-right: 1.5rem;
@@ -24,13 +24,13 @@ st.markdown(
         font-size: 2.2rem;
         font-weight: 700;
         color: #1f2937;
-        margin-bottom: 0.1rem;
+        margin-bottom: 0.15rem;
     }
 
     .company-meta {
         color: #6b7280;
         font-size: 14px;
-        margin-bottom: 12px;
+        margin-bottom: 14px;
     }
 
     .hint-box {
@@ -117,21 +117,46 @@ def format_market_cap(market_cap):
 def get_company_info(symbol: str):
     try:
         ticker = yf.Ticker(symbol)
-        info = ticker.info
+        info = ticker.info or {}
 
-        company = info.get("longName") or info.get("shortName") or symbol
-        sector = info.get("sector", "Unknown sector")
-        exchange = info.get("exchange", "Unknown exchange")
+        company = (
+            info.get("longName")
+            or info.get("shortName")
+            or info.get("displayName")
+            or symbol
+        )
+
+        sector = info.get("sector", "")
+        exchange = (
+            info.get("exchange")
+            or info.get("fullExchangeName")
+            or ""
+        )
+
         market_cap = format_market_cap(info.get("marketCap"))
 
         return company, sector, exchange, market_cap
+
     except Exception:
-        return symbol, "", "", ""
+        return symbol, "", "", "N/A"
 
 
 @st.cache_data(ttl=900)
 def load_stock(symbol: str, period: str):
     return yf.Ticker(symbol).history(period=period, interval="1d")
+
+
+def build_meta_text(sector: str, exchange: str, market_cap: str):
+    parts = []
+    if sector:
+        parts.append(sector)
+    if exchange:
+        parts.append(exchange)
+    if market_cap and market_cap != "N/A":
+        parts.append(f"Market Cap: {market_cap}")
+    elif market_cap:
+        parts.append("Market Cap: N/A")
+    return " | ".join(parts)
 
 
 # -----------------------------
@@ -140,7 +165,7 @@ def load_stock(symbol: str, period: str):
 col1, col2 = st.columns([2.2, 1.1], gap="small")
 
 with col1:
-    symbol = st.text_input("Stock Symbol", "AAPL").upper()
+    symbol = st.text_input("Stock Symbol", "AAPL").strip().upper()
 
 with col2:
     period = st.selectbox(
@@ -153,11 +178,12 @@ with col2:
 # Company info
 # -----------------------------
 company_name, sector, exchange, market_cap = get_company_info(symbol)
+meta_text = build_meta_text(sector, exchange, market_cap)
 
 st.markdown(
     f"""
     <div class="app-title">{company_name} ({symbol})</div>
-    <div class="company-meta">{sector} | {exchange} | Market Cap: {market_cap}</div>
+    <div class="company-meta">{meta_text}</div>
     """,
     unsafe_allow_html=True,
 )
@@ -276,7 +302,6 @@ fig = make_subplots(
     specs=[[{"secondary_y": True}], [{"secondary_y": False}]],
 )
 
-# Candlestick
 fig.add_trace(
     go.Candlestick(
         x=df.index,
@@ -295,7 +320,6 @@ fig.add_trace(
     secondary_y=False,
 )
 
-# SMA20
 fig.add_trace(
     go.Scatter(
         x=df.index,
@@ -308,7 +332,6 @@ fig.add_trace(
     secondary_y=False,
 )
 
-# SMA50
 fig.add_trace(
     go.Scatter(
         x=df.index,
@@ -321,7 +344,6 @@ fig.add_trace(
     secondary_y=False,
 )
 
-# Volume
 fig.add_trace(
     go.Bar(
         x=df.index,
@@ -337,7 +359,6 @@ fig.add_trace(
     secondary_y=True,
 )
 
-# BUY markers
 if not buy_points.empty:
     fig.add_trace(
         go.Scatter(
@@ -352,7 +373,6 @@ if not buy_points.empty:
         secondary_y=False,
     )
 
-# SELL markers
 if not sell_points.empty:
     fig.add_trace(
         go.Scatter(
@@ -367,7 +387,6 @@ if not sell_points.empty:
         secondary_y=False,
     )
 
-# RSI
 fig.add_trace(
     go.Scatter(
         x=df.index,
@@ -379,8 +398,22 @@ fig.add_trace(
     col=1,
 )
 
-fig.add_hline(y=70, row=2, col=1, line_dash="dash", line_color="rgba(239,68,68,0.7)", line_width=1)
-fig.add_hline(y=30, row=2, col=1, line_dash="dash", line_color="rgba(16,185,129,0.7)", line_width=1)
+fig.add_hline(
+    y=70,
+    row=2,
+    col=1,
+    line_dash="dash",
+    line_color="rgba(239,68,68,0.7)",
+    line_width=1,
+)
+fig.add_hline(
+    y=30,
+    row=2,
+    col=1,
+    line_dash="dash",
+    line_color="rgba(16,185,129,0.7)",
+    line_width=1,
+)
 
 fig.update_layout(
     height=600,
