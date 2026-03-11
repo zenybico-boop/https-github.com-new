@@ -46,7 +46,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.markdown('<div class="app-title">Stock Candlestick Chart</div>', unsafe_allow_html=True)
+st.markdown('<div class="app-title">Stock Signal Chart</div>', unsafe_allow_html=True)
 
 # -----------------------------
 # Inputs
