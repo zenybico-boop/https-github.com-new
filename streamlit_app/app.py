@@ -15,13 +15,13 @@ st.markdown(
     .block-container {
         padding-top: 2.2rem;
         padding-bottom: 1rem;
-        padding-left: 1.5rem;
-        padding-right: 1.5rem;
+        padding-left: 1.2rem;
+        padding-right: 1.2rem;
         max-width: 100%;
     }
 
     .app-title {
-        font-size: 2.2rem;
+        font-size: 2.1rem;
         font-weight: 700;
         color: #1f2937;
         margin-bottom: 0.15rem;
@@ -29,7 +29,7 @@ st.markdown(
     }
 
     .price-row {
-        font-size: 1.05rem;
+        font-size: 1.02rem;
         font-weight: 700;
         margin-bottom: 0.2rem;
         color: #111827;
@@ -161,15 +161,10 @@ def get_company_info(symbol: str):
         )
 
         sector = info.get("sector", "")
-        exchange = (
-            info.get("exchange")
-            or info.get("fullExchangeName")
-            or ""
-        )
+        exchange = info.get("exchange") or info.get("fullExchangeName") or ""
         market_cap = format_market_cap(info.get("marketCap"))
 
         return company, sector, exchange, market_cap
-
     except Exception:
         return symbol, "", "", "N/A"
 
@@ -462,7 +457,7 @@ fig.add_hline(
 )
 
 fig.update_layout(
-    height=600,
+    height=520,
     dragmode="pan",
     margin=dict(l=10, r=10, t=6, b=6),
     hovermode="x unified",
@@ -473,7 +468,7 @@ fig.update_layout(
         y=1.01,
         xanchor="left",
         x=0,
-        font=dict(size=11),
+        font=dict(size=9),
     ),
     font=dict(size=11),
 )
@@ -518,5 +513,19 @@ st.plotly_chart(
     config={
         "scrollZoom": True,
         "displaylogo": False,
+        "displayModeBar": "hover",
+        "modeBarButtonsToRemove": [
+            "zoom2d",
+            "pan2d",
+            "select2d",
+            "lasso2d",
+            "zoomIn2d",
+            "zoomOut2d",
+            "autoScale2d",
+            "resetScale2d",
+            "toggleSpikelines",
+            "hoverClosestCartesian",
+            "hoverCompareCartesian",
+        ],
     },
 )
