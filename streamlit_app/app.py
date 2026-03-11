@@ -232,9 +232,13 @@ else:
     change_text = f"{day_change:.2f} ({day_change_pct:.2f}%)"
 
 st.markdown(
-    """
-    <div class="app-title">TEST UPDATE SUCCESS</div>
-    <div class="company-meta">If you can see this, Streamlit is using the new code.</div>
+    f"""
+    <div class="app-title">{company_name} ({symbol})</div>
+    <div class="price-row">
+        ${last_close:.2f}
+        <span class="{change_class}">&nbsp; {change_text}</span>
+    </div>
+    <div class="company-meta">{meta_text}</div>
     """,
     unsafe_allow_html=True,
 )
