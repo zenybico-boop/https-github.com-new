@@ -54,7 +54,15 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.markdown('<div class="app-title">Stock Signal Chart</div>', unsafe_allow_html=True)
+st.markdown(
+    f"""
+    <div class="app-title">{company_name} ({symbol})</div>
+    <div style="color:#6b7280; font-size:14px; margin-bottom:10px;">
+        {sector} | {exchange} | Market Cap: {market_cap}
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 # -----------------------------
 # Inputs
@@ -63,6 +71,7 @@ col1, col2 = st.columns([2.2, 1.1], gap="small")
 
 with col1:
     symbol = st.text_input("Stock Symbol", "AAPL").strip().upper()
+    company_name, sector, exchange, market_cap = get_company_info(symbol)
 
 with col2:
     period = st.selectbox(
@@ -124,6 +133,27 @@ def fmt_num(value):
 # Data load
 # -----------------------------
 @st.cache_data(ttl=900)
+
+def get_company_info(symbol: str):
+    try:
+        ticker = yf.Ticker(symbol)
+        info = ticker.info
+
+        company = info.get("longName") or info.get("shortName") or symbol
+        sector = info.get("sector", "Unknown sector")
+        exchange = info.get("exchange", "Unknown exchange")
+        market_cap = info.get("marketCap")
+
+        if market_cap:
+            market_cap = f"${market_cap/1e12:.2f}T" if market_cap > 1e12 else f"${market_cap/1e9:.2f}B"
+        else:
+            market_cap = "N/A"
+
+        return company, sector, exchange, market_cap
+
+    except Exception:
+        return symbol, "", "", ""
+    
 def load_stock_data(symbol: str, period: str):
     ticker = yf.Ticker(symbol)
     hist = ticker.history(period=period, interval="1d")
