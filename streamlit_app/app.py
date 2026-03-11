@@ -25,6 +25,29 @@ st.markdown(
         font-weight: 700;
         color: #1f2937;
         margin-bottom: 0.15rem;
+        line-height: 1.2;
+    }
+
+    .price-row {
+        font-size: 1.05rem;
+        font-weight: 700;
+        margin-bottom: 0.2rem;
+        color: #111827;
+    }
+
+    .price-up {
+        color: #059669;
+        font-weight: 700;
+    }
+
+    .price-down {
+        color: #dc2626;
+        font-weight: 700;
+    }
+
+    .price-flat {
+        color: #6b7280;
+        font-weight: 700;
     }
 
     .company-meta {
@@ -113,6 +136,17 @@ def format_market_cap(market_cap):
     return f"${market_cap:,.0f}"
 
 
+def build_meta_text(sector: str, exchange: str, market_cap: str):
+    parts = []
+    if sector:
+        parts.append(sector)
+    if exchange:
+        parts.append(exchange)
+    if market_cap:
+        parts.append(f"Market Cap: {market_cap}")
+    return " | ".join(parts)
+
+
 @st.cache_data(ttl=3600)
 def get_company_info(symbol: str):
     try:
@@ -132,7 +166,6 @@ def get_company_info(symbol: str):
             or info.get("fullExchangeName")
             or ""
         )
-
         market_cap = format_market_cap(info.get("marketCap"))
 
         return company, sector, exchange, market_cap
@@ -144,19 +177,6 @@ def get_company_info(symbol: str):
 @st.cache_data(ttl=900)
 def load_stock(symbol: str, period: str):
     return yf.Ticker(symbol).history(period=period, interval="1d")
-
-
-def build_meta_text(sector: str, exchange: str, market_cap: str):
-    parts = []
-    if sector:
-        parts.append(sector)
-    if exchange:
-        parts.append(exchange)
-    if market_cap and market_cap != "N/A":
-        parts.append(f"Market Cap: {market_cap}")
-    elif market_cap:
-        parts.append("Market Cap: N/A")
-    return " | ".join(parts)
 
 
 # -----------------------------
@@ -180,14 +200,6 @@ with col2:
 company_name, sector, exchange, market_cap = get_company_info(symbol)
 meta_text = build_meta_text(sector, exchange, market_cap)
 
-st.markdown(
-    f"""
-    <div class="app-title">{company_name} ({symbol})</div>
-    <div class="company-meta">{meta_text}</div>
-    """,
-    unsafe_allow_html=True,
-)
-
 # -----------------------------
 # Load data
 # -----------------------------
@@ -202,13 +214,47 @@ if df.empty:
     st.stop()
 
 # -----------------------------
+# Header stats
+# -----------------------------
+last_close = float(df["Close"].iloc[-1])
+
+if len(df) >= 2:
+    prev_close = float(df["Close"].iloc[-2])
+else:
+    prev_close = last_close
+
+day_change = last_close - prev_close
+day_change_pct = (day_change / prev_close * 100) if prev_close != 0 else 0.0
+
+if day_change > 0:
+    change_class = "price-up"
+    change_text = f"+{day_change:.2f} (+{day_change_pct:.2f}%)"
+elif day_change < 0:
+    change_class = "price-down"
+    change_text = f"{day_change:.2f} ({day_change_pct:.2f}%)"
+else:
+    change_class = "price-flat"
+    change_text = f"{day_change:.2f} ({day_change_pct:.2f}%)"
+
+st.markdown(
+    f"""
+    <div class="app-title">{company_name} ({symbol})</div>
+    <div class="price-row">
+        ${last_close:.2f}
+        <span class="{change_class}">&nbsp; {change_text}</span>
+    </div>
+    <div class="company-meta">{meta_text}</div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# -----------------------------
 # Calculations
 # -----------------------------
 df["SMA20"] = sma(df["Close"], 20)
 df["SMA50"] = sma(df["Close"], 50)
 df["RSI14"] = rsi(df["Close"], 14)
 
-last_close = float(df["Close"].iloc[-1])
 last_sma20 = df["SMA20"].iloc[-1]
 last_sma50 = df["SMA50"].iloc[-1]
 last_rsi = df["RSI14"].iloc[-1]
