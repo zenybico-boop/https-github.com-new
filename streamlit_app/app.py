@@ -13,7 +13,7 @@ st.markdown(
     """
     <style>
     .block-container {
-        padding-top: 2.2rem;
+        padding-top: 3.2rem;
         padding-bottom: 1rem;
         padding-left: 1.2rem;
         padding-right: 1.2rem;
@@ -78,6 +78,24 @@ st.markdown(
 # -----------------------------
 # Helper functions
 # -----------------------------
+KNOWN_COMPANIES = {
+    "AAPL": "Apple Inc.",
+    "MSFT": "Microsoft Corporation",
+    "NVDA": "NVIDIA Corporation",
+    "TSLA": "Tesla, Inc.",
+    "GOOG": "Alphabet Inc.",
+    "GOOGL": "Alphabet Inc.",
+    "AMZN": "Amazon.com, Inc.",
+    "META": "Meta Platforms, Inc.",
+    "NFLX": "Netflix, Inc.",
+    "BABA": "Alibaba Group Holding Limited",
+    "AMD": "Advanced Micro Devices, Inc.",
+    "INTC": "Intel Corporation",
+    "PYPL": "PayPal Holdings, Inc.",
+    "NIO": "NIO Inc.",
+}
+
+
 def sma(values: pd.Series, window: int):
     return values.rolling(window).mean()
 
@@ -157,16 +175,20 @@ def get_company_info(symbol: str):
             info.get("longName")
             or info.get("shortName")
             or info.get("displayName")
-            or symbol
+            or KNOWN_COMPANIES.get(symbol, symbol)
         )
 
         sector = info.get("sector", "")
         exchange = info.get("exchange") or info.get("fullExchangeName") or ""
         market_cap = format_market_cap(info.get("marketCap"))
 
+        # Fallback if Yahoo returns only the symbol as the "name"
+        if company.strip().upper() == symbol.strip().upper():
+            company = KNOWN_COMPANIES.get(symbol, symbol)
+
         return company, sector, exchange, market_cap
     except Exception:
-        return symbol, "", "", "N/A"
+        return KNOWN_COMPANIES.get(symbol, symbol), "", "", "N/A"
 
 
 @st.cache_data(ttl=900)
